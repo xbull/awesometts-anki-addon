@@ -25,6 +25,7 @@ from PyQt5 import QtCore, QtWidgets
 
 from .base import Dialog, ServiceDialog
 from .common import Checkbox, Label, Note
+from anki.utils import htmlToTextLine
 
 __all__ = ['BrowserGenerator', 'EditorGenerator']
 
@@ -355,9 +356,8 @@ class BrowserGenerator(ServiceDialog):
 
             proc['counts']['fail'] += 1
 
-            message = exception.message
-            if isinstance(message, str):
-                message = self._RE_WHITESPACE.sub(' ', message).strip()
+            message = str(exception)
+            message = self._RE_WHITESPACE.sub(' ', message).strip()
 
             try:
                 proc['exceptions'][message] += 1
@@ -555,6 +555,8 @@ class BrowserGenerator(ServiceDialog):
                 ]
 
         else:
+            from aqt.utils import showInfo
+            self._alerts = showInfo
             messages.append("there were no errors.")
 
         if proc['aborted']:
@@ -723,6 +725,17 @@ class EditorGenerator(ServiceDialog):
         Focus the text area after displaying the dialog.
         """
 
+        # try to get selected text or field text
+        def callback(fieldText):
+            if fieldText:
+                fieldText = htmlToTextLine(fieldText)
+            self._show(fieldText, *args, **kwargs)
+
+        self._editor.web.evalWithCallback("""\
+(currentField && window.getSelection().getRangeAt(0).collapsed) ? currentField.innerHTML : null;
+""", callback)
+
+    def _show(self, fieldText, *args, **kwargs):
         super(EditorGenerator, self).show(*args, **kwargs)
 
         text = self.findChild(QtWidgets.QTextEdit, 'text')
@@ -739,14 +752,7 @@ class EditorGenerator(ServiceDialog):
             return from_unknown(app.clipboard().text(subtype)[0])
 
         for origin in [
-                lambda: from_note(web.selectedText()),
-                lambda: from_note(web.page().mainFrame().evaluateJavaScript(
-                    # for jQuery, this needs to be html() instead of text() as
-                    # $('<div>hi<br>there</div>').text() yields "hithere"
-                    # whereas if we have the original HTML, we can convert the
-                    # line break tag into whitespace during input sanitization
-                    '$("#f%d").html()' % editor.currentField
-                )),
+                lambda: fieldText,
                 lambda: try_clipboard('html'),
                 lambda: try_clipboard('text'),
         ]:
@@ -781,7 +787,7 @@ class EditorGenerator(ServiceDialog):
             ),
             fail=lambda exception: (
                 self._alerts("Cannot record the input phrase with these "
-                             "settings.\n\n%s" % exception.message, self),
+                             "settings.\n\n%s" % str(exception), self),
                 text_input.setFocus(),
             ),
         )

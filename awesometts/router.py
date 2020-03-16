@@ -331,6 +331,61 @@ class Router(object):
 
             try_next()
 
+    def debug_run_tests(self, debug_output_file_path):
+        file = open(debug_output_file_path, 'a')
+        def outputln(line):
+            file.write(line + '\n')
+            file.flush()
+        def output(line):
+            file.write(line)
+            file.flush()
+        def get_default_options(svc_id):
+            available_options = self.get_options(svc_id)
+
+            options = {}
+
+            for option in available_options:
+                key = option['key']
+                if 'test_default' in option:
+                    value = option['test_default']
+                elif 'default' in option:
+                    value = option['default']
+                else:
+                    value = option['values'][0]
+                    if isinstance(value, tuple):
+                        value = value[0]
+                options[key] = value
+
+            return options
+        services = self.get_services()
+        failed_services = []
+        outputln('list of all services ' + repr(services))
+        for svc_id, name in services:
+            outputln(f'Testing {name}')
+
+            options = get_default_options(svc_id)
+
+            def fail_test(exception):
+                outputln('TEST FAILED: ' + repr(exception))
+                failed_services.append((svc_id, name))
+            def pass_test(result_path):
+                outputln('test passed')
+            callbacks = {
+                'okay': pass_test,
+                'fail': fail_test
+            }
+            outputln('calling router with ' + repr((svc_id, 'test', options)))
+            self(
+                svc_id=svc_id,
+                text='test',
+                options=options,
+                callbacks=callbacks,
+                async_variable=False
+            )
+        outputln('FAILED SERVICES: ' + repr(failed_services))
+        outputln('Testing completed')
+        file.close()
+
     def __call__(self, svc_id, text, options, callbacks,
                  want_human=False, note=None, async_variable=True):
         """
@@ -385,6 +440,9 @@ class Router(object):
         self._call_assert_callbacks(callbacks)
 
         try:
+            # TODO: a ValueError without any message is being thrown in this try block
+            # https://anki.tenderapp.com/discussions/add-ons/24212-anki-crashes-due-to-awesome-tts
+            
             self._logger.debug("Call for '%s' w/ %s", svc_id, options)
 
             if not text:
@@ -563,6 +621,28 @@ class Router(object):
                         task=task,
                         callback=completion_callback,
                     )
+
+                if hasattr(service['instance'], 'prerun'):
+                    def prerun_ok(result):
+                        """Callback handler for successful prerun hook."""
+                        options['prerun'] = result
+                        do_spawn()
+
+                    def prerun_error(exception):
+                        """Callback handler for unsuccessful prerun hook."""
+                        self._logger.error("Asynchronous exception in prerun: %s",
+                                           exception)
+                        completion_callback(exception)
+
+                    try:
+                        service['instance'].prerun(text, options, path,
+                                                   prerun_ok, prerun_error)
+                    except Exception as exception:  # all, pylint:disable=W0703
+                        self._logger.error("Synchronous exception in prerun: %s",
+                                           exception)
+                        completion_callback(exception)
+                else:
+                    do_spawn()
             else:
                 callback_exception = None
                 try:
@@ -570,28 +650,6 @@ class Router(object):
                 except Exception as exception:
                     callback_exception = exception
                 completion_callback(callback_exception)
-
-            if hasattr(service['instance'], 'prerun'):
-                def prerun_ok(result):
-                    """Callback handler for successful prerun hook."""
-                    options['prerun'] = result
-                    do_spawn()
-
-                def prerun_error(exception):
-                    """Callback handler for unsuccessful prerun hook."""
-                    self._logger.error("Asynchronous exception in prerun: %s",
-                                       exception)
-                    completion_callback(exception)
-
-                try:
-                    service['instance'].prerun(text, options, path,
-                                               prerun_ok, prerun_error)
-                except Exception as exception:  # all, pylint:disable=W0703
-                    self._logger.error("Synchronous exception in prerun: %s",
-                                       exception)
-                    completion_callback(exception)
-            else:
-                do_spawn()
 
     def _call_assert_callbacks(self, callbacks):
         """Checks the callbacks argument for validity."""
@@ -674,7 +732,7 @@ class Router(object):
                 except ValueError as exception:
                     problems.append(
                         "invalid value '%s' for '%s' attribute (%s)" %
-                        (options[key], key, exception.message)
+                        (options[key], key, str(exception))
                     )
 
                 except StopIteration:
@@ -946,17 +1004,10 @@ class _Pool(QtWidgets.QWidget):
         """
 
         if exception:
-            if not (hasattr(exception, 'message') and
-                    isinstance(exception.message, str) and
-                    exception.message):
-
-                exception.message = format(exception) or \
-                    "No additional details available"
-
             self._logger.debug(
                 "Exception from thread [%d] (%s); executing callback\n%s",
 
-                thread_id, exception.message,
+                thread_id, repr(exception),
 
                 _prefixed(stack_trace)
                 if isinstance(stack_trace, str)

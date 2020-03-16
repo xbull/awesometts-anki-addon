@@ -73,6 +73,7 @@ class Configurator(Dialog):
         self._group_editor = None
         self._sul_compiler = sul_compiler
 
+        # Title of the configuration dialog can be changed here
         super(Configurator, self).__init__(title="Configuration",
                                            *args, **kwargs)
 
@@ -772,8 +773,7 @@ class Configurator(Dialog):
                 done=lambda: button.setEnabled(True),
                 fail=lambda exception: state.setText("Check failed: %s" % (
                     (
-                        exception.message if hasattr(exception, 'message')
-                        else str(exception)
+                        str(exception)
                     ) or
                     "Nothing further known"
                 )),

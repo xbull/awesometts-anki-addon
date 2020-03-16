@@ -34,7 +34,6 @@ __all__ = ['Dialog', 'ServiceDialog']
 
 # all methods might need 'self' in the future, pylint:disable=R0201
 
-
 class Dialog(QtWidgets.QDialog):
     """
     Base used for all dialog windows.
@@ -213,6 +212,10 @@ class ServiceDialog(Dialog):
     generator, mass file generator, template tag builder).
     """
 
+    # For testing purposes.
+    _DEBUG_ENABLED = False
+    # _DEBUG_OUTPUT_FILE_PATH = 'C:/Users/Administrator/awesometts-interface/debug-output.txt'
+
     _OPTIONS_WIDGETS = (QtWidgets.QComboBox, QtWidgets.QAbstractSpinBox)
 
     _INPUT_WIDGETS = _OPTIONS_WIDGETS + (QtWidgets.QAbstractButton,
@@ -379,6 +382,12 @@ class ServiceDialog(Dialog):
         hor.addWidget(text)
         hor.addWidget(button)
 
+        if self._DEBUG_ENABLED:
+            debug_test_button = QtWidgets.QPushButton("DEBUG: Run tests")
+            debug_test_button.setObjectName('debug_tests')
+            debug_test_button.clicked.connect(self._on_debug_tests)
+            hor.addWidget(debug_test_button)
+
         header = Label("Preview")
         header.setFont(self._FONT_HEADER)
 
@@ -455,6 +464,12 @@ class ServiceDialog(Dialog):
             lambda: self._launch_link('services'),
         )
         return menu
+
+    def _on_debug_tests(self):
+        if self._DEBUG_ENABLED:
+            self._alerts("before tests run")
+            self._addon.router.debug_run_tests(self._DEBUG_OUTPUT_FILE_PATH)
+            self._alerts("after tests run")
 
     def _on_service_activated(self, idx, initial=False, use_options=None):
         """

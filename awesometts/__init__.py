@@ -88,6 +88,15 @@ logger = Bundle(debug=lambda *a, **k: None, error=lambda *a, **k: None,
 # import logging as logger
 # logger.basicConfig(stream=sys.stdout, level=logger.DEBUG)
 
+
+# This will write all addon logs to a file.
+# import logging
+# logger = logging.getLogger('awesometts')
+# logger.setLevel(logging.DEBUG)
+# debug_fh = logging.FileHandler('C:/Users/Administrator/awesometts-interface/awesometts-log.txt')
+# debug_fh.setLevel(logging.DEBUG)
+# logger.addHandler(debug_fh)
+
 sequences = {key: QKeySequence()
              for key in ['browser_generator', 'browser_stripper',
                          'configurator', 'editor_generator', 'templater']}
@@ -882,3 +891,19 @@ def window_shortcuts():
     on_sequence_change(config)  # set config menu if created before we ran
     config.bind(['launch_' + key for key in sequences.keys()],
                 on_sequence_change)
+
+if not anki.version.startswith("2.0."):
+	# If a specific component of AwesomeTTS that you do not need is causing a
+	# problem (e.g. conflicting with another add-on), you can disable it here by
+	# prefixing it with a hash (#) sign and restarting Anki.
+
+	browser_menus()     # mass generator and MP3 stripper
+	cache_control()     # automatically clear the media cache regularly
+	cards_button()      # on-the-fly templater helper in card view
+	config_menu()       # provides access to configuration dialog
+	editor_button()     # single audio clip generator button
+	reviewer_hooks()    # on-the-fly playback/shortcuts, context menus
+	sound_tag_delays()  # delayed playing of stored [sound]s in review
+	temp_files()        # remove temporary files upon session exit
+	#update_checker()    # if enabled, runs the add-on update checker
+	window_shortcuts()  # enable/update shortcuts for add-on windows

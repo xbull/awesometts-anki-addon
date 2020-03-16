@@ -113,7 +113,7 @@ class NeoSpeech(Service):
 
         with self._lock:
             if not self._cookies:
-                headers = self.net_headers(BASE_URL)
+                headers = self.net_headers(BASE_URL, {'Host': 'neospeech.com'})
                 self._cookies = ';'.join(
                     cookie.split(';')[0]
                     for cookie in headers['Set-Cookie'].split(',')

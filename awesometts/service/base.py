@@ -28,6 +28,7 @@ import os
 import shutil
 import sys
 import subprocess
+from anki.sync import AnkiRequestsClient
 
 __all__ = ['Service']
 
@@ -75,7 +76,8 @@ class Service(object, metaclass=abc.ABCMeta):
     CLI_DECODINGS = ['ascii', 'utf-8', 'latin-1']
 
     # where we can find the lame transcoder
-    CLI_LAME = 'lame'
+    from anki.sound import _packagedCmd
+    CLI_LAME = _packagedCmd(['lame'])[0][0]
 
     # where we can find the mplayer binary
     CLI_MPLAYER = 'mplayer'
@@ -478,16 +480,16 @@ class Service(object, metaclass=abc.ABCMeta):
         import atexit
         atexit.register(service.terminate)
 
-    def net_headers(self, url):
+    def net_headers(self, url, headers=None):
         """Returns the headers for a URL."""
 
         self._logger.debug("GET %s for headers", url)
         self._netops += 1
-        from urllib.request import urlopen, Request
-        return urlopen(
-            Request(url=url, headers={'User-Agent': DEFAULT_UA}),
-            timeout=DEFAULT_TIMEOUT,
-        ).headers
+        
+        client = AnkiRequestsClient()
+        response = client.get(url, headers=headers)
+
+        return response.headers
 
     def parse_mime_type(self, raw_mime):
         raw_mime = raw_mime.replace('/x-', '/')
@@ -524,7 +526,6 @@ class Service(object, metaclass=abc.ABCMeta):
         """
 
         assert method in ['GET', 'POST'], "method must be GET or POST"
-        from urllib.request import urlopen, Request
         from urllib.parse import quote
 
         targets = targets if isinstance(targets, list) else [targets]
@@ -554,6 +555,8 @@ class Service(object, metaclass=abc.ABCMeta):
 
         payloads = []
 
+        client = AnkiRequestsClient()
+
         for number, (url, params) in enumerate(targets, 1):
             desc = "web request" if len(targets) == 1 \
                 else "web request (%d of %d)" % (number, len(targets))
@@ -567,32 +570,33 @@ class Service(object, metaclass=abc.ABCMeta):
                 headers.update(custom_headers)
 
             self._netops += 1
-            response = urlopen(
-                Request(
-                    url=('?'.join([url, params]) if params and method == 'GET'
-                         else url),
-                    headers=headers,
-                ),
-                data=params.encode() if params and method == 'POST' else None,
-                timeout=DEFAULT_TIMEOUT,
-            )
+
+            if method == 'GET':
+                request_url = ('?'.join([url, params]) if params else url)
+                self._logger.debug('request made: ' + repr((method, request_url, headers)))
+                response = client.get(request_url, headers)
+            else:
+                from io import BytesIO
+                self._logger.debug('request made: ' + repr((method, url, headers, (params if params else ''))))
+                # note that this method of AnkiRequestsClient must take IO streams, not strings
+                response = client.post(url, BytesIO((params if params else '').encode()), headers)
 
             if not response:
                 raise IOError("No response for %s" % desc)
 
-            if response.getcode() != 200:
+            if response.status_code != 200:
                 value_error = ValueError(
                     "Got %d status for %s" %
-                    (response.getcode(), desc)
+                    (response.status_code, desc)
                 )
                 try:
-                    value_error.payload = response.read()
+                    value_error.payload = response.content
                     response.close()
                 except Exception:
                     pass
                 raise value_error
 
-            got_mime = response.getheader('Content-Type')
+            got_mime = response.headers['Content-Type']
             simplified_mime = self.parse_mime_type(got_mime)
 
             if 'mime' in require and require['mime'] != simplified_mime:
@@ -605,10 +609,10 @@ class Service(object, metaclass=abc.ABCMeta):
                 value_error.wanted_mime = require['mime']
                 raise value_error
 
-            if not allow_redirects and response.geturl() != url:
+            if not allow_redirects and response.url != url:
                 raise ValueError("Request has been redirected")
 
-            payload = response.read()
+            payload = response.content
             response.close()
 
             if 'size' in require and len(payload) < require['size']:

@@ -203,7 +203,7 @@ class Updater(Dialog):
             addon_dialog.accept()  # see base, pylint:disable=E1101
 
         except Exception as exception:  # catch all, pylint:disable=W0703
-            msg = getattr(exception, 'message', default=str(exception))
+            msg = str(exception)
             dlb.fail(
                 f"Unable to automatically update AwesomeTTS ({msg}); "
                 f"you may want to restart Anki and then update the "
