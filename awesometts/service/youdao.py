@@ -29,7 +29,8 @@ __all__ = ['Youdao']
 VOICE_CODES = [
     ('en-GBR', ("English, British", 1)),
     ('en-USA', ("English, American", 2)),
-    ('en', ("English, alternative", 3)),
+    ('zh-CHS', ("English, Chinese", 3)),
+    ('en', ("English, alternative", 4)),
 ]
 
 VOICE_LOOKUP = dict(VOICE_CODES)
