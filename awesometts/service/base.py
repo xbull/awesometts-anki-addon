@@ -345,7 +345,7 @@ class Service(object, metaclass=abc.ABCMeta):
             "Received %d %s of output from call\n%s",
             len(returned),
             "lines" if len(returned) != 1 else "line",
-            '\n'.join(["<<< " + line for line in returned]),
+            str('\n'.join(["<<< " + line for line in returned])).encode('utf8'),
         )
 
         return returned
@@ -598,6 +598,8 @@ class Service(object, metaclass=abc.ABCMeta):
 
             got_mime = response.headers['Content-Type']
             simplified_mime = self.parse_mime_type(got_mime)
+            
+            #self._logger.debug('response got: ' + str(response.content))
 
             if 'mime' in require and require['mime'] != simplified_mime:
 
@@ -633,6 +635,8 @@ class Service(object, metaclass=abc.ABCMeta):
         Downloads a file to the given path from the specified target(s).
         See net_stream() for information about available options.
         """
+        
+        #self._logger.debug("net_download args: %s", args.encode('utf8'))
 
         payload = self.net_stream(*args, **kwargs)
         with open(path, 'wb') as response_output:

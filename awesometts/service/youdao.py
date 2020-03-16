@@ -20,13 +20,15 @@
 
 from .base import Service
 from .common import Trait
+import hashlib
+import uuid
 
 __all__ = ['Youdao']
 
 
 VOICE_CODES = [
-    ('en-GB', ("English, British", 1)),
-    ('en-US', ("English, American", 2)),
+    ('en-GBR', ("English, British", 1)),
+    ('en-USA', ("English, American", 2)),
     ('en', ("English, alternative", 3)),
 ]
 
@@ -78,19 +80,38 @@ class Youdao(Service):
                 default='en-US',
             ),
         ]
+        
+    def encrypt(self, signStr):
+        hash_algorithm = hashlib.md5()
+        hash_algorithm.update(signStr.encode('utf-8'))
+        return hash_algorithm.hexdigest()
 
     def run(self, text, options, path):
         """Downloads from dict.youdao.com directly to an MP3."""
+        
+        #log = open('/Users/paulyan/Downloads/log.txt', 'w')
+        #log.write(text + '\n')
+        #aqt.utils.showWarnnings(text)
+        
+        appKey = '324444fbde55d50a'
+        appSecret = 'KbC0BWPoiaR2NjHZdlzTcIWbJZyEd8Cs'
+        
+        salt = str(uuid.uuid1())
 
         self.net_download(
             path,
             [
-                ('http://dict.youdao.com/dictvoice', dict(
-                    audio=subtext,
-                    type=VOICE_LOOKUP[options['voice']][1],
+                ('https://openapi.youdao.com/ttsapi', dict(
+                    appKey = appKey,
+                    q = subtext,
+                    salt = salt,
+                    sign = self.encrypt(appKey + subtext + salt + appSecret),
+                    langType = options['voice'],
                 ))
                 for subtext in self.util_split(text, 1000)
             ],
-            require=dict(mime='audio/mpeg', size=256),
+            method='POST',
+            custom_headers={"Content-Type": "application/x-www-form-urlencoded"},
+            require=dict(mime='audio/mp3'),
             add_padding=True,
         )

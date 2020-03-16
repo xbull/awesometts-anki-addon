@@ -61,10 +61,10 @@ class Config(object):
             """
 
             if parameters:
-                self._logger.debug("Executing '%s' with %s", sql, parameters)
+                self._logger.debug("Executing '%s' with %s", sql.encode('utf8'), str(parameters).encode('utf8'))
                 return sqlite3.Cursor.execute(self, sql, parameters)
             else:
-                self._logger.debug("Executing '%s'", sql)
+                self._logger.debug("Executing '%s'", sql.encode('utf8'))
                 return sqlite3.Cursor.execute(self, sql)
 
     __slots__ = [

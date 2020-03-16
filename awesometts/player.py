@@ -145,11 +145,11 @@ class Player(object):
         items in it already.
         """
 
-        if self._anki.sound.mplayerQueue:
-            if self._logger:
-                self._logger.debug("Ignoring %d-second delay (%s) because of "
-                                   "queue: %s", seconds, reason, path)
-            return
+        #if self._anki.sound.mplayerQueue:
+        #    if self._logger:
+        #        self._logger.debug("Ignoring %d-second delay (%s) because of "
+        #                           "queue: %s", seconds, reason, path)
+        #    return
 
         if self._logger:
             self._logger.debug("Need %d-second delay (%s): %s",

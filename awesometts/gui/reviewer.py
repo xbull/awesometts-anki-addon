@@ -188,7 +188,7 @@ class Reviewer(object):
 
         self._addon.logger.debug("Reinterpreted answer HTML as:\n%s" % (
             "\n".join("<<< " + line for line in answer_html.split("\n"))
-        ))
+        ).encode('utf8'))
 
         return answer_html
 

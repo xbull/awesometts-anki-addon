@@ -32,7 +32,7 @@ __all__ = ['RE_CLOZE_BRACED', 'RE_CLOZE_RENDERED', 'RE_ELLIPSES',
            'RE_WHITESPACE', 'STRIP_HTML', 'Sanitizer']
 
 
-RE_CLOZE_BRACED = re.compile(anki.template.template.clozeReg % r'\d+')
+RE_CLOZE_BRACED = re.compile(r"(?s)\{\{c%s::(.*?)(::(.*?))?\}\}" % r'\d+')
 RE_CLOZE_RENDERED = re.compile(
     # see anki.template.template.clozeText; n.b. the presence of the brackets
     # in the pattern means that this will only match and replace on the
@@ -70,6 +70,7 @@ class Sanitizer(object):  # call only, pylint:disable=too-few-public-methods
         self._rules = rules
         self._config = config
         self._logger = logger
+        logger.debug("Create Sanitizer with rules '%s'", str(rules).encode('utf8'))
 
     def __call__(self, text):
         """Apply the initialized rules against the text and return."""
@@ -130,8 +131,8 @@ class Sanitizer(object):  # call only, pylint:disable=too-few-public-methods
         """If we have a logger, send debug line for transformation."""
 
         if self._logger:
-            self._logger.debug("Transformation using %s: %s", method,
-                               "(empty string)" if result == '' else result)
+            self._logger.debug("Transformation using %s: %s", str(method).encode('utf8'),
+                               "(empty string)" if result == '' else result.encode('utf8'))
 
     def _rule_char_ellipsize(self, text, chars):
         """Ellipsizes given chars from the text."""

@@ -458,7 +458,7 @@ class Router(object):
 
             self._logger.debug(
                 "Parsed call to '%s' w/ %s and \"%s\" at %s (cache %s)",
-                svc_id, options, text, path, "hit" if cache_hit else "miss",
+                svc_id, options, text.encode("utf8"), path, "hit" if cache_hit else "miss",
             )
 
             # If we didn't get a cache hit, we have to call the real service,

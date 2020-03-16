@@ -27,13 +27,7 @@ __all__ = ['Baidu']
 
 
 VOICES = {
-    'en': "English, American",
-    'jp': "Japanese",
-    'pt': "Portuguese",
-    # returns error -- 'spa': "Spanish",
-    'th': "Thai",
-    'uk': "English, British",
-    'zh': "Chinese",
+    'zh': "Chinese, English",
 }
 
 
@@ -52,6 +46,12 @@ class Baidu(Service):
         """Returns a short, static description."""
 
         return "Baidu Translate text2audio web API (%d voices)" % len(VOICES)
+        
+
+    def extras(self):
+        """The Baidu Translate API requires an Access Token."""
+
+        return [dict(key='tok', label="Access Token", required=True)]
 
     def options(self):
         """Provides access to voice only."""
@@ -65,6 +65,12 @@ class Baidu(Service):
                         in sorted(VOICES.items(), key=lambda t: t[1])],
                 transform=self.normalize,
             ),
+            
+            dict(key='speed',
+                 label="Speed",
+                 values=(-10, +10),
+                 transform=lambda i: min(max(-10, int(round(float(i)))), +10),
+                 default=0),
         ]
 
     def run(self, text, options, path):
@@ -73,8 +79,8 @@ class Baidu(Service):
         self.net_download(
             path,
             [
-                ('http://tts.baidu.com/text2audio',
-                 dict(text=subtext, lan=options['voice'], ie='UTF-8'))
+                ('https://tsn.baidu.com/text2audio',
+                 dict(tex=subtext, lan=options['voice'], cuid='1', ctp='1', tok=options['tok'], speed=options['speed']))
                 for subtext in self.util_split(text, 300)
             ],
             require=dict(mime='audio/mp3', size=512),
