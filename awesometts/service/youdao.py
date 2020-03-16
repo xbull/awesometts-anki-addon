@@ -79,6 +79,12 @@ class Youdao(Service):
                 transform=transform_voice,
                 default='en-US',
             ),
+            
+            dict(key='speed',
+                 label="Speed",
+                 values=(0.1, 10),
+                 transform=lambda i: min(max(0.1, i), +10),
+                 default=1),
         ]
         
     def encrypt(self, signStr):
@@ -107,6 +113,7 @@ class Youdao(Service):
                     salt = salt,
                     sign = self.encrypt(appKey + subtext + salt + appSecret),
                     langType = options['voice'],
+                    speed = options['speed'],
                 ))
                 for subtext in self.util_split(text, 1000)
             ],
