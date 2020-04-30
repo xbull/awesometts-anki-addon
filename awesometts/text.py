@@ -31,8 +31,9 @@ __all__ = ['RE_CLOZE_BRACED', 'RE_CLOZE_RENDERED', 'RE_ELLIPSES',
            'RE_HINT_LINK', 'RE_LINEBREAK_HTML', 'RE_NEWLINEISH', 'RE_SOUNDS',
            'RE_WHITESPACE', 'STRIP_HTML', 'Sanitizer']
 
+clozeReg = r"(?si)\{\{(?P<tag>c)%s::(?P<content>.*?)(::(?P<hint>.*?))?\}\}"
 
-RE_CLOZE_BRACED = re.compile(r"(?s)\{\{c%s::(.*?)(::(.*?))?\}\}" % r'\d+')
+RE_CLOZE_BRACED = re.compile(clozeReg % r'\d+')
 RE_CLOZE_RENDERED = re.compile(
     # see anki.template.template.clozeText; n.b. the presence of the brackets
     # in the pattern means that this will only match and replace on the
@@ -74,6 +75,8 @@ class Sanitizer(object):  # call only, pylint:disable=too-few-public-methods
 
     def __call__(self, text):
         """Apply the initialized rules against the text and return."""
+
+        self._logger.debug("Going to transform '%s'", str(text).encode('utf8'))
 
         applied = []
 
@@ -124,6 +127,8 @@ class Sanitizer(object):  # call only, pylint:disable=too-few-public-methods
             else:
                 raise AssertionError("bad rule given to Sanitizer instance")
 
+            self._logger.debug("After rule %s: %s", rule, str(text).encode('utf8'))
+
         self._log(applied, text)
         return text
 
@@ -131,7 +136,7 @@ class Sanitizer(object):  # call only, pylint:disable=too-few-public-methods
         """If we have a logger, send debug line for transformation."""
 
         if self._logger:
-            self._logger.debug("Transformation using %s: %s", str(method).encode('utf8'),
+            self._logger.debug("Transformed using %s: %s", str(method).encode('utf8'),
                                "(empty string)" if result == '' else result.encode('utf8'))
 
     def _rule_char_ellipsize(self, text, chars):
